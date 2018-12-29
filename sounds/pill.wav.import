@@ -1,0 +1,21 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/pill.wav-b0a96d938838d64cfec49024f940ea22.sample"
+
+[deps]
+
+source_file="res://sounds/pill.wav"
+dest_files=[ "res://.import/pill.wav-b0a96d938838d64cfec49024f940ea22.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=true
+edit/normalize=true
+edit/loop=false
+compress/mode=0

@@ -203,6 +203,7 @@ func move_pac(delay):
 
 	if movement.reached_destination:
 		eat_dot($pac.position_tile)
+		$sound_walk.play()
 
 
 func move_ghosts(delay):
