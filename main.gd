@@ -7,6 +7,7 @@ var Util = preload('res://util.gd')
 var Map = preload('res://map.gd')
 
 var dot_scene = load('res://dot.tscn')
+var pill_scene = load('res://pill.tscn')
 var wall_scene = load('res://wall.tscn')
 var ghost_scene = load('res://ghost.tscn')
 
@@ -22,6 +23,10 @@ var map_paths = {}
 # shortest distance to Pac.
 # @Cleanup - same as map_paths?
 var map_path_dist_to_pac = {}
+
+var ghost_running_tick = 0.0
+
+var score = 0
 
 func _ready():
 
@@ -54,6 +59,14 @@ func _ready():
 			$dots.add_child(dot)
 			map_paths[pos] = true # A traversable path...
 
+		for pos in map.pill_positions:
+			var pill = pill_scene.instance()
+			pill.position_tile = pos
+			pill.position = Vector2(game_area.offset + pos.x*game_area.tile_size,
+				game_area.offset + pos.y*game_area.tile_size)
+			$dots.add_child(pill)
+			map_paths[pos] = true # A traversable path...
+
 		for pos in map.wall_positions:
 			var wall = wall_scene.instance()
 			wall.position = Vector2(game_area.offset + pos.x*game_area.tile_size,
@@ -71,6 +84,18 @@ func _ready():
 
 
 func _process(delay):
+
+	if ghost_running_tick > 0.0:
+		ghost_running_tick -= delay
+
+		if ghost_running_tick <= 0.0:
+			ghost_running_tick = 0.0
+
+			for ghost in $ghosts.get_children():
+				ghost.chase()
+
+		$ghost_run_timer_label.text = '%d' % [ghost_running_tick]
+
 	if $pac.position_tile == $pac.destination_tile:
 		if Input.is_action_pressed('pac_up'):
 			$pac.destination_tile += Vector2(0, -1)
@@ -145,6 +170,12 @@ func build_distance_to_pac():
 func eat_dot(position):
 	for dot in $dots.get_children():
 		if dot.position_tile == position:
+
+			if dot.is_pill():
+				ghost_running_tick = 10.0
+				for ghost in $ghosts.get_children():
+					ghost.run()
+
 			dot.queue_free()
 			return true
 	return false
@@ -184,13 +215,19 @@ func move_ghosts(delay):
 			build_distance_to_pac()
 			var directions = [Vector2(0, -1), Vector2(0, 1), Vector2(1, 0), Vector2(-1, 0)]
 			var goto = Vector2(0, 0)
-			var min_distance = 100 # Something big
+			var min_distance = 100 # Something big...
+			var max_distance = 0 # Something small...
 
 			for direction in directions:
 				var next_position = ghost.position_tile + direction
 				if next_position in map_path_dist_to_pac:
-					if map_path_dist_to_pac[next_position] < min_distance:
-						min_distance = map_path_dist_to_pac[next_position]
-						goto = next_position
+					if ghost_running_tick > 0.0:
+						if map_path_dist_to_pac[next_position] > max_distance:
+							max_distance = map_path_dist_to_pac[next_position]
+							goto = next_position
+					else:
+						if map_path_dist_to_pac[next_position] < min_distance:
+							min_distance = map_path_dist_to_pac[next_position]
+							goto = next_position
 
 			ghost.destination_tile = goto

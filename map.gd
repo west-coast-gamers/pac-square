@@ -8,6 +8,7 @@ func load(filename, game_area):
 	loaded_map['loaded_ok'] = false
 	loaded_map['dot_positions'] = []
 	loaded_map['wall_positions'] = []
+	loaded_map['pill_positions'] = []
 	loaded_map['pac_position'] = Vector2(0, 0)
 
 	for y in range(game_area.height_in_tiles):
@@ -22,6 +23,8 @@ func load(filename, game_area):
 				loaded_map.pac_position = Vector2(x, y)
 			elif c == '.':
 				loaded_map.dot_positions.append(Vector2(x, y))
+			elif c == 'M':
+				loaded_map.pill_positions.append(Vector2(x, y))
 			else:
 				loaded_map.wall_positions.append(Vector2(x, y))
 
