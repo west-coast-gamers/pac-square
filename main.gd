@@ -82,7 +82,6 @@ func _ready():
 	create_ghost(Vector2(9, 6))
 	create_ghost(Vector2(9, 9))
 
-
 func _process(delay):
 
 	if ghost_running_tick > 0.0:
@@ -94,7 +93,7 @@ func _process(delay):
 			for ghost in $ghosts.get_children():
 				ghost.chase()
 
-		$ghost_run_timer_label.text = '%d' % [ghost_running_tick]
+		$ghost_run_timer_label.text = '%.1f' % [ghost_running_tick]
 
 	if $pac.position_tile == $pac.destination_tile:
 		if Input.is_action_pressed('pac_up'):
@@ -172,9 +171,12 @@ func eat_dot(position):
 		if dot.position_tile == position:
 
 			if dot.is_pill():
-				ghost_running_tick = 10.0
+				ghost_running_tick = 9.9
 				for ghost in $ghosts.get_children():
 					ghost.run()
+			else:
+				score += 1
+				$score_value_label.text = str(score)
 
 			dot.queue_free()
 			return true
