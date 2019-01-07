@@ -42,7 +42,7 @@ func _ready():
 		# for accessing a node in the scene tree.
 
 		$pac.position_tile = map.pac_position
-		$pac.destination_tile = map.pac_position
+		$pac.connect('reached_destination', self, 'on_pac_reached_destination')
 		place_pac(map.pac_position)
 		map_paths[map.pac_position] = true
 
@@ -82,6 +82,9 @@ func _ready():
 	create_ghost(Vector2(9, 6))
 	create_ghost(Vector2(9, 9))
 
+	for ghost in $ghosts.get_children():
+		move_ghost(ghost)
+
 func _process(delay):
 
 	if ghost_running_tick > 0.0:
@@ -95,48 +98,22 @@ func _process(delay):
 
 		$ghost_run_timer_label.text = '%.1f' % [ghost_running_tick]
 
-	if $pac.position_tile == $pac.destination_tile:
-		if Input.is_action_pressed('pac_up'):
-			$pac.destination_tile += Vector2(0, -1)
-		elif Input.is_action_pressed('pac_down'):
-			$pac.destination_tile += Vector2(0, 1)
-		elif Input.is_action_pressed('pac_left'):
-			$pac.destination_tile += Vector2(-1, 0)
-		elif Input.is_action_pressed('pac_right'):
-			$pac.destination_tile += Vector2(1, 0)
+	var goto_direction = Vector2()
 
-	# Reject move if it isn't valid...
-	if $pac.destination_tile != $pac.position_tile and not $pac.destination_tile in map_paths:
-		$pac.destination_tile = $pac.position_tile
+	if Input.is_action_pressed('pac_up'):
+		goto_direction = Vector2(0, -1)
+	elif Input.is_action_pressed('pac_down'):
+		goto_direction = Vector2(0, 1)
+	elif Input.is_action_pressed('pac_left'):
+		goto_direction = Vector2(-1, 0)
+	elif Input.is_action_pressed('pac_right'):
+		goto_direction = Vector2(1, 0)
 
-	move_pac(delay)
-	move_ghosts(delay)
-
-
-func move_character(character, delay):
-
-	# The character is moving...
-	if character.position_tile != character.destination_tile:
-
-		var movement = (character.destination_tile - character.position_tile) * character.speed * delay
-		var distance_to_destination = character.position.distance_to(
-			(character.destination_tile * game_area.tile_size) + Vector2(game_area.offset, game_area.offset))
-
-		character.position += movement
-
-		if movement.length() > distance_to_destination:
-			character.position_tile = character.destination_tile
-			character.position = (character.position_tile * game_area.tile_size) + Vector2(game_area.offset, game_area.offset)
-
-			return {'did_move': true, 'reached_destination': true, 'distance_remaining': distance_to_destination}
-
-		return {'did_move': true, 'reached_destination': false, 'distance_remaining': Vector2(0, 0)}
-
-	# :Tips - GDScript has no way to unpack multiple return values. So the
-	# cleanest way I think is to return a dictionary (which then can be accessed
-	# using the . syntax).
-	return {'did_move': false, 'reached_destination': false, 'distance_remaining': Vector2(0, 0)}
-
+	var destination_tile = $pac.position_tile + goto_direction
+	if destination_tile in map_paths:
+		$pac.go_in_direction(goto_direction)
+	else:
+		$pac.go_in_direction(Vector2())
 
 func build_distance_to_pac():
 	map_path_dist_to_pac = {}
@@ -182,55 +159,44 @@ func eat_dot(position):
 			return true
 	return false
 
+func on_pac_reached_destination(pac):
+	if eat_dot($pac.position_tile):
+		$sound_walk.play()
+
+func on_ghost_reached_destination(ghost):
+	move_ghost(ghost)
 
 func create_ghost(pos):
 	var ghost = ghost_scene.instance()
+	ghost.connect('reached_destination', self, 'on_ghost_reached_destination')
 	$ghosts.add_child(ghost)
 	ghost.position_tile = pos
-	ghost.destination_tile = pos
 	place_ghost(ghost)
-
 
 func place_pac(tile_vector):
 	$pac.position = (tile_vector * game_area.tile_size) + Vector2(game_area.offset, game_area.offset)
 
-
 func place_ghost(ghost):
 	ghost.position = (ghost.position_tile * game_area.tile_size) + Vector2(game_area.offset, game_area.offset)
 
+func move_ghost(ghost):
 
-func move_pac(delay):
+	build_distance_to_pac()
+	var directions = [Vector2(0, -1), Vector2(0, 1), Vector2(1, 0), Vector2(-1, 0)]
+	var goto_direction = Vector2(0, 0)
+	var min_distance = 100 # Something big...
+	var max_distance = 0 # Something small...
 
-	var movement = move_character($pac, delay)
+	for direction in directions:
+		var next_position = ghost.position_tile + direction
+		if next_position in map_path_dist_to_pac:
+			if ghost_running_tick > 0.0:
+				if map_path_dist_to_pac[next_position] > max_distance:
+					max_distance = map_path_dist_to_pac[next_position]
+					goto_direction = direction
+			else:
+				if map_path_dist_to_pac[next_position] < min_distance:
+					min_distance = map_path_dist_to_pac[next_position]
+					goto_direction = direction
 
-	if movement.reached_destination:
-		eat_dot($pac.position_tile)
-		$sound_walk.play()
-
-
-func move_ghosts(delay):
-
-	for ghost in $ghosts.get_children():
-
-		var movement = move_character(ghost, delay)
-
-		if not movement.did_move or movement.reached_destination:
-			build_distance_to_pac()
-			var directions = [Vector2(0, -1), Vector2(0, 1), Vector2(1, 0), Vector2(-1, 0)]
-			var goto = Vector2(0, 0)
-			var min_distance = 100 # Something big...
-			var max_distance = 0 # Something small...
-
-			for direction in directions:
-				var next_position = ghost.position_tile + direction
-				if next_position in map_path_dist_to_pac:
-					if ghost_running_tick > 0.0:
-						if map_path_dist_to_pac[next_position] > max_distance:
-							max_distance = map_path_dist_to_pac[next_position]
-							goto = next_position
-					else:
-						if map_path_dist_to_pac[next_position] < min_distance:
-							min_distance = map_path_dist_to_pac[next_position]
-							goto = next_position
-
-			ghost.destination_tile = goto
+	ghost.go_in_direction(goto_direction)

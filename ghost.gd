@@ -1,37 +1,34 @@
 extends Node2D
 
 var position_tile = Vector2(0, 0)
-var destination_tile = Vector2(0, 0)
-var speed = 110
-var animation = 'idle'
+var last_direction = Vector2()
+
+signal reached_destination(ghost)
 
 func _ready():
 	chase()
 
-func _process(delta):
-
-	var direction = destination_tile - position_tile
-	var new_animation = ''
-
-	if direction.x > 0:
-		new_animation = 'right'
-	elif direction.x < 0:
-		new_animation = 'left'
-	elif direction.y > 0:
-		new_animation = 'down'
-	elif direction.y < 0:
-		new_animation = 'up'
-
-	if animation != new_animation:
-		animation = new_animation
-		$animation_player.play(animation)
-
 func run():
-	speed = 50
 	$sprite_chasing.hide()
 	$sprite_running_away.show()
 
 func chase():
-	speed = 60
 	$sprite_chasing.show()
 	$sprite_running_away.hide()
+
+func go_in_direction(direction):
+	last_direction = direction
+	if direction.x > 0:
+		$animation_player.play('right')
+	elif direction.x < 0:
+		$animation_player.play('left')
+	elif direction.y > 0:
+		$animation_player.play('down')
+	elif direction.y < 0:
+		$animation_player.play('up')
+
+func _on_animation_player_animation_finished(anim_name):
+	position_tile += last_direction
+	position += last_direction * 32.0
+	$animation_player.seek(0, true)
+	emit_signal('reached_destination', self)
